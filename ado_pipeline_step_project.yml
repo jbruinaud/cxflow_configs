@@ -1,0 +1,91 @@
+steps:
+- bash: |
+   #[pre-req] java 8
+   #download cx-flow jar
+   curl -LJO https://github.com/checkmarx-ltd/cx-flow/releases/download/1.6.20/cx-flow-1.6.20.jar
+   
+   #create cx-flow config file
+   cat <<EOD > ./cxflow-application.yml
+   logging:
+     level:
+       com:
+         checkmarx:
+           flow:
+             custom:
+               ADOIssueTracker: DEBUG
+   cx-flow:
+     bug-tracker: Azure
+     bug-tracker-impl:
+       - Azure
+     filter-severity:
+       - High
+     mitre-url: https://cwe.mitre.org/data/definitions/%s.html
+     codebash-url: https://checkmarx-demo.codebashing.com/courses/
+     enabled-vulnerability-scanners:
+       - sast
+       - sca
+   
+   checkmarx:
+     version: 9.0
+     scope: access_control_api sast_rest_api
+     username: "$CXSAST_USR"
+     password: "$CXSAST_PASS"
+     client-secret: 014DF517-39D1-4453-B7B3-9930C563627C
+     base-url: $CXSAST_URL
+     team: $CX_TEAM
+     scan-preset: Checkmarx Default
+     url: $CXSAST_URL/cxrestapi
+     #WSDL Config
+     portal-url: $CXSAST_URL/cxwebinterface/Portal/CxWebService.asmx
+     sdk-url: $CXSAST_URL/cxwebinterface/SDK/CxSDKWebService.asmx
+     portal-wsdl: $CXSAST_URL/Portal/CxWebService.asmx?wsdl
+     sdk-wsdl: $CXSAST_URL/SDK/CxSDKWebService.asmx?wsdl
+     incremental: false
+   
+   sca:
+     filter-severity:
+       - High
+     appUrl: https://sca.checkmarx.net
+     apiUrl: https://api-sca.checkmarx.net/
+     accessControlUrl: https://platform.checkmarx.net
+     username: $CXSCA_USR
+     password: $CXSCA_PASS
+     tenant: $CXSCA_TENANT
+
+   azure:
+     token: $AZURE_ACCESS_TOKEN
+     url: $AZURE_URL
+     issue-type: issue
+     api-version: 5.0
+     false-positive-label: false-positive
+     closed-status: Closed
+     open-status: Active
+     
+   EOD
+   
+   #debug: cat cx-flow config
+   cat ./cxflow-application.yml
+   
+   #debug: echo cx-flow java call
+   echo java -jar cx-flow-1.6.20.jar --spring.config.location=./cxflow-application.yml --project --cx-project="$CX_PROJECT" --app="$CX_PROJECT" --branch="$(Build.SourceBranchName)" --repo-name="$(System.TeamProject)" --namespace="$AZURE_ORGNAME" --alt-project="$(System.TeamProject)" --cx-flow.break-build=false
+   
+   
+   #cx-flow exec
+   java -jar cx-flow-1.6.20.jar --spring.config.location=./cxflow-application.yml --project --cx-project="$CX_PROJECT" --app="$CX_PROJECT" --branch="$(Build.SourceBranchName)" --repo-name="$(System.TeamProject)" --namespace="$AZURE_ORGNAME" --alt-project="$(System.TeamProject)" --cx-flow.break-build=false
+   
+   #cleanup
+   rm -f ./cxflow-application.yml
+   rm -f ./cx-flow-1.6.20.jar
+  displayName: 'CxFlow - work items update'
+  env:
+    CXSAST_URL: 
+    CXSAST_USR: 
+    CXSAST_PASS: 
+    CXSCA_TENANT: 
+    CXSCA_USR: 
+    CXSCA_PASS: 
+    AZURE_ACCESS_TOKEN: 
+    AZURE_URL: 
+    AZURE_ORGNAME: 
+    CX_PROJECT: 
+    CX_TEAM: 
